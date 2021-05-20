@@ -1,0 +1,58 @@
+spring:
+  cloud:
+    gateway:
+      plus:  # 加强版 特有配置
+        group: default # 分组
+      discovery:
+        locator:
+          enabled: true
+          lowerCaseServiceId: true
+      dynamic-route:
+        nacos: # 依赖于 spring-cloud-starter-alibaba-nacos-config
+          data-id: ${spring.application.name}-routes
+          group-id: GATEWAY_ROUTE_GROUP #nacos里面配置文件的groupid
+        redis:
+          key: gateway:route
+      routes:
+        - id: kindergarten_route
+          uri: http://kgapi.1d1d100.net/kindergarten_api
+          predicates:
+            - Path=/kindergarten_api/**
+#        - id: rest_route
+#          uri: lb://spirngCloudDemo-system-provider
+#          predicates:
+#            - Path=/user/**
+#        - id: dubbo_route
+#          uri: dubboRest://spirngCloudDemo-system-provider
+#          predicates:
+#            - Dubbo=/user/**
+#        - id: dubbo_route
+#          uri: dubbo://unifiedBase-system-provider/com.ddweilai.unified.base.api.core.AppCorpRpcService
+#          predicates:
+#            - Dubbo=/app/**
+    nacos:
+      username: java2
+      password: 'Java2020'
+      server-addr: nacos.1d1d100.net:80
+      config:
+        group: QY_GROUP
+        namespace: java-${spring.profiles.active}
+        file-extension: yaml
+      discovery:
+        enabled: true
+        register-enabled: true
+        group: QY_GROUP
+        namespace: java-service-${spring.profiles.active}
+    sentinel:
+      transport:
+        port: 18140
+        dashboard: 172.16.5.152:18080
+      datasource:
+        flow: #名称，随意
+          nacos:
+            server-addr: nacos.1d1d100.net:80 #naentos地址
+            data-id: ${spring.application.name}-flow-rules
+            namespace: sentinel-${spring.profiles.active} #nacos里面配置文件的namespace
+            group-id: SENTINEL_GROUP #nacos里面配置文件的groupid
+            data-type: json #nacos里面配置文件的类型
+            rule-type: flow

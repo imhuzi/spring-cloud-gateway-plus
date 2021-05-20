@@ -79,6 +79,7 @@ hs_err_pid*
 # Gradle
 .idea/**/gradle.xml
 .idea/**/libraries
+.gradle/**
 
 # Gradle and Maven with auto-import
 # When using Gradle or Maven with auto-import, you should exclude module files,
@@ -266,4 +267,5 @@ docs/_book
 
 # TODO: where does this rule come from?
 test/
+*.iml
 

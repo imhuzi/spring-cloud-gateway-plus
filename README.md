@@ -4,7 +4,7 @@
 - 网关控制台 UI
 - Spring Cloud 服务发现可视化
 - 路由可视化配置
-- dubbo 服务支持一键转路由
+- dubbo 服务支持一键转Spring Cloud Gateway路由
 
 #### 主要模块说明
 - gateway-admin-server 网关管理控制台后端服务
