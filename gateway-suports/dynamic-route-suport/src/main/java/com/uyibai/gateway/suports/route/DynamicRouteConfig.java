@@ -9,6 +9,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 /**
@@ -19,9 +20,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 @EnableConfigurationProperties(DynamicRouteProperties.class)
 public class DynamicRouteConfig {
 
-    @Autowired
-    private ApplicationEventPublisher publisher;
-
     /**
      * Nacos实现动态路由管理方式
      */
@@ -30,8 +28,8 @@ public class DynamicRouteConfig {
     @ConditionalOnBean(NacosConfigManager.class)
     public class NacosDynamicRouteConfig {
         @Bean
-        public NacosRouteDefinitionRepository nacosRouteDefinitionRepository(NacosConfigManager nacosConfigManager, DynamicRouteProperties dynamicRouteProperties) {
-            return new NacosRouteDefinitionRepository(publisher, nacosConfigManager, dynamicRouteProperties);
+        public NacosDynamicRouteHandler nacosRouteDefinitionRepository(NacosConfigManager nacosConfigManager, DynamicRouteProperties dynamicRouteProperties) {
+            return new NacosDynamicRouteHandler(nacosConfigManager, dynamicRouteProperties);
         }
     }
 
@@ -39,7 +37,7 @@ public class DynamicRouteConfig {
      * redis 实现动态路由自动配置
      */
     @Configuration
-//    @ConditionalOnBean(RedisTemplate.class)
+    @ConditionalOnBean(RedisTemplate.class)
     @ConditionalOnProperty(name = "spring.cloud.gateway.dynamic-route.publish-type", havingValue = "redis", matchIfMissing = false)
     public class RedisDynamicRouteConfig {
         @Bean
