@@ -1,6 +1,6 @@
 package com.uyibai.gateway.common.exception;
 
-public class BizGatewayException extends RuntimeException{
+public class GatewayException extends RuntimeException{
     private static final long serialVersionUID = 8068509879445395353L;
 
     private Integer code;
@@ -10,7 +10,7 @@ public class BizGatewayException extends RuntimeException{
      *
      * @param e the e
      */
-    public BizGatewayException(final Throwable e) {
+    public GatewayException(final Throwable e) {
         super(e);
     }
 
@@ -19,11 +19,11 @@ public class BizGatewayException extends RuntimeException{
      *
      * @param message the message
      */
-    public BizGatewayException(final String message) {
+    public GatewayException(final String message) {
         super(message);
     }
 
-    public BizGatewayException(Integer code, String message) {
+    public GatewayException(Integer code, String message) {
         super(message);
         this.code = code;
     }
@@ -39,7 +39,7 @@ public class BizGatewayException extends RuntimeException{
      * @param message   the message
      * @param throwable the throwable
      */
-    public BizGatewayException(final String message, final Throwable throwable) {
+    public GatewayException(final String message, final Throwable throwable) {
         super(message, throwable);
     }
 }
