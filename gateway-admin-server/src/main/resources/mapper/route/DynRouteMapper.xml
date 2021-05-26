@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.uyibai.gateway.admin.core.route.mapper.DynRouteMapper">
+
+    <resultMap id="DynRouteVo" type="com.uyibai.gateway.admin.api.model.route.DynRouteVo">
+        <result column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="group_id" property="groupId"/>
+        <result column="route_key" property="routeKey"/>
+        <result column="route_uri" property="routeUri"/>
+        <result column="metadata" jdbcType="VARCHAR" property="metadata"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="status" property="status"/>
+        <result column="order_num" property="orderNum"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+
+
+    <select id="selectByQueryParam" resultMap="DynRouteVo">
+        select id,name,group_id,route_key,route_uri,metadata,status,order_num,created_at,updated_at
+        from dyn_route
+        <where>
+            <if test="param.id!=null">
+                id = #{param.id}
+            </if>
+            <if test="param.groupId!=null">
+                and group_id = #{param.groupId}
+            </if>
+            <if test="param.routeKey!=null">
+                and route_key = #{param.routeKey}
+            </if>
+            <if test="param.status!=null">
+                and status = #{param.status}
+            </if>
+        </where>
+        order by order_num ${param.ont}, id desc
+    </select>
+    <select id="selectVoById" resultMap="DynRouteVo">
+        select id,name,group_id,route_key,route_uri,metadata,status,order_num,created_at,updated_at
+        from dyn_route
+        where id = #{routeId}
+    </select>
+</mapper>

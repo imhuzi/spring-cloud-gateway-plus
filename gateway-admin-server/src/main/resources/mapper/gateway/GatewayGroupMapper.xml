@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.uyibai.gateway.admin.core.gateway.mapper.GatewayGroupMapper">
+
+    <select id="queryVoList" resultType="com.uyibai.gateway.admin.api.model.gateway.GatewayGroupVo">
+        select id,name,group_key,remark,status,created_at,updated_at
+        from gateway_group
+        <where>
+            <if test="param.id!=null">
+                id = #{param.id}
+            </if>
+            <if test="param.name!=null">
+                and `name` = #{param.name}
+            </if>
+            <if test="param.groupKey!=null">
+                and group_key = #{param.groupKey}
+            </if>
+            <if test="param.status!=null">
+                and status = #{param.status}
+            </if>
+        </where>
+        order by id desc
+
+    </select>
+</mapper>

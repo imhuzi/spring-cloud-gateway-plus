@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.uyibai.gateway.admin.core.app.mapper.AppServiceMapper">
+
+    <resultMap id="AppServiceDetailVo" type="com.uyibai.gateway.admin.core.app.vo.AppServiceDetailVo">
+        <result column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="app" property="app"/>
+        <result column="app_id" property="appId"/>
+        <result column="app_uri_prefix" property="appUriPrefix"/>
+        <result column="registry_ids" jdbcType="VARCHAR" property="registryIds"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="protocol" property="protocol"/>
+        <result column="service" property="service"/>
+        <result column="sdk_type" property="sdkType"/>
+        <result column="version" property="version"/>
+        <result column="group" property="group"/>
+        <result column="path" property="path"/>
+        <result column="route_uri_prefix" property="routeUriPrefix"/>
+        <result column="meta" property="meta"/>
+    </resultMap>
+
+    <select id="selectDetail" resultMap="AppServiceDetailVo">
+     SELECT app.app_id as app,app.id as app_id, app.uri_prefix as app_uri_prefix
+     ,service.id,service.protocol,service.service,service.sdk_type,service.version,service.`group`
+     ,service.path,service.route_uri_prefix,service.meta,service.registry_ids,service.sdk_version
+     FROM app_service as service
+     LEFT JOIN application as app on app.id = service.app_id
+     where service.id = #{serviceId}
+  </select>
+</mapper>

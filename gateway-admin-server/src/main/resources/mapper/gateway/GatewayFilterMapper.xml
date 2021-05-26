@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.uyibai.gateway.admin.core.gateway.mapper.GatewayFilterMapper">
+
+    <resultMap id="GatewayFilterVo" type="com.uyibai.gateway.admin.api.model.gateway.GatewayFilterVo">
+        <result column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="filter_type" property="filterType"/>
+        <result column="filter_key" property="filterKey"/>
+        <result column="filter_scope" property="filterScope"/>
+        <result column="remark" property="remark"/>
+        <result column="args" jdbcType="VARCHAR" property="args"
+                typeHandler="com.uyibai.gateway.admin.config.ArgsDefinitionTypeHandler"/>
+        <result column="status" property="status"/>
+        <result column="order_num" property="orderNum"/>
+        <result column="multi" property="multi"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="queryVoList" resultMap="GatewayFilterVo">
+        select id,name,filter_type,filter_key,filter_scope,remark,status,order_num,multi,created_at,updated_at
+        from gateway_filter
+        <where>
+            <if test="param.id!=null">
+                id = #{param.id}
+            </if>
+            <if test="param.name!=null">
+                and `name` = #{param.name}
+            </if>
+            <if test="param.filterKey!=null">
+                and filter_key = #{param.filterKey}
+            </if>
+            <if test="param.status!=null">
+                and status = #{param.status}
+            </if>
+        </where>
+        order by order_num asc, id desc
+    </select>
+</mapper>

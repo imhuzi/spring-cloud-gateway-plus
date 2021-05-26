@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.uyibai.gateway.admin.core.gateway.mapper.GatewayRoutePredicateMapper">
+    <resultMap id="GatewayRoutePredicateVo" type="com.uyibai.gateway.admin.api.model.gateway.GatewayRoutePredicateVo">
+        <result column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="predicate_key" property="predicateKey"/>
+        <result column="remark" property="remark"/>
+        <result column="args" jdbcType="VARCHAR" property="args"
+                typeHandler="com.uyibai.gateway.admin.config.ArgsDefinitionTypeHandler"/>
+        <result column="status" property="status"/>
+        <result column="multi" property="multi"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="queryVoList" resultMap="GatewayRoutePredicateVo">
+        select id,name,predicate_key,args,remark,status,multi,created_at,updated_at
+        from gateway_route_predicate
+        <where>
+            <if test="param.id!=null">
+                id = #{param.id}
+            </if>
+            <if test="param.name!=null">
+                and `name` = #{param.name}
+            </if>
+            <if test="param.predicateKey!=null">
+                and predicate_key = #{param.predicateKey}
+            </if>
+            <if test="param.status!=null">
+                and status = #{param.status}
+            </if>
+        </where>
+        order by id desc
+
+    </select>
+</mapper>
