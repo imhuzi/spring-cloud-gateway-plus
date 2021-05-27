@@ -4,6 +4,9 @@ import java.util.List;
 
 import javax.annotation.Resource;
 
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.uyibai.gateway.admin.api.model.gateway.GatewayFilterVo;
@@ -33,6 +36,7 @@ public class GatewayFilterApi implements GatewayFilterRpcService {
    * @return filter info
    */
   @Override
+  @PostMapping(path = PATH_PREFIX)
   public GatewayFilterVo save(GatewayFilterVo filterVo) {
     return gatewayFilterService.saveWithVo(filterVo);
   }
@@ -44,6 +48,7 @@ public class GatewayFilterApi implements GatewayFilterRpcService {
    * @return if success return true Otherwise false
    */
   @Override
+  @DeleteMapping(path = PATH_PREFIX)
   public Boolean delete(Integer filterId) {
     return gatewayFilterService.delete(filterId);
   }
@@ -55,6 +60,7 @@ public class GatewayFilterApi implements GatewayFilterRpcService {
    * @return filter list
    */
   @Override
+  @GetMapping(path = PATH_PREFIX)
   public List<GatewayFilterVo> list(GatewayFilterVo filterVo) {
     return gatewayFilterService.listByVo(filterVo);
   }

@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: GatewayAdmin
+  profiles:
+    active: dev
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:32769/gateway_plus?characterEncoding=UTF-8&useUnicode=true&useSSL=false
+    username: root
+    password: java
+  #redis 配置
+  redis:
+    database: 0
+    host: 127.0.0.1
+    port: 32775
+    password:
+
+server:
+  port: 8080

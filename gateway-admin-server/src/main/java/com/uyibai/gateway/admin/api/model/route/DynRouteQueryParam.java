@@ -38,6 +38,11 @@ public class DynRouteQueryParam implements Serializable {
   private Integer groupId;
 
   /**
+   * 节点ip
+   */
+  private String nodeIp;
+
+  /**
    * 状态(0,未启用,1 启用)
    */
   private Integer status;

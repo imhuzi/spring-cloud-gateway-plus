@@ -4,28 +4,37 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PostMapping;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.uyibai.gateway.admin.api.model.definition.FilterDefinition;
+import com.uyibai.gateway.admin.api.model.definition.GatewayRouteDefinition;
+import com.uyibai.gateway.admin.api.model.definition.PredicateDefinition;
 import com.uyibai.gateway.admin.api.model.route.DynRouteQueryParam;
+import com.uyibai.gateway.admin.api.model.route.DynRouteSyncParam;
 import com.uyibai.gateway.admin.api.model.route.DynRouteVo;
+import com.uyibai.gateway.admin.config.GatewayAdminProperties;
 import com.uyibai.gateway.admin.constant.RouteStatus;
 import com.uyibai.gateway.admin.core.route.entity.DynRoute;
 import com.uyibai.gateway.admin.core.route.entity.DynRouteFilter;
 import com.uyibai.gateway.admin.core.route.entity.DynRoutePredicate;
 import com.uyibai.gateway.admin.core.route.mapper.DynRouteMapper;
+import com.uyibai.gateway.admin.core.route.publisher.GatewayRoutePublisher;
 import com.uyibai.gateway.admin.core.route.service.DynRouteFilterService;
 import com.uyibai.gateway.admin.core.route.service.DynRoutePredicateService;
 import com.uyibai.gateway.admin.core.route.service.DynRouteService;
 import com.uyibai.gateway.admin.exception.GatewayAdminException;
 import com.uyibai.gateway.admin.exception.GatewayAdminExceptionCode;
 import com.uyibai.gateway.common.exception.GatewayException;
+import com.uyibai.gateway.common.spring.SpringContextUtil;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -42,10 +51,22 @@ import lombok.extern.slf4j.Slf4j;
 public class DynRouteServiceImpl extends ServiceImpl<DynRouteMapper, DynRoute> implements DynRouteService {
 
     @Resource
+    GatewayAdminProperties gatewayAdminProperties;
+
+    @Resource
     DynRouteFilterService dynRouteFilterService;
 
     @Resource
     DynRoutePredicateService dynRoutePredicateService;
+
+
+    private GatewayRoutePublisher publisher;
+
+    @PostConstruct
+    public void init() {
+        publisher = getPublisher();
+    }
+
 
 
     @Override
@@ -59,6 +80,91 @@ public class DynRouteServiceImpl extends ServiceImpl<DynRouteMapper, DynRoute> i
         }
         return save(entity);
     }
+
+    /**
+     * 发布 上线 单个路由 信息
+     * <p>
+     * 如果失败 抛异常
+     *
+     * @param dynRouteId 路由id
+     */
+    @Override
+    @Transactional(rollbackFor = {Exception.class, GatewayException.class})
+    public void online(Integer dynRouteId) {
+        // 修改 发布 状态
+        DynRoute dynRoute = new DynRoute();
+        dynRoute.setStatus(RouteStatus.STATUS_ONLINE);
+        dynRoute.setId(dynRouteId);
+        boolean ret = updateById(dynRoute);
+        if (ret) {
+            // 根据 配置的 动态路由管理方式 进行 发布
+            DynRouteVo routeVo = queryById(dynRouteId);
+            log.info("GatewayRouteOnline:{}", routeVo);
+            publisher.publishOne(covertToDefinition(routeVo));
+        }
+    }
+
+    /**
+     * 下线单个路由
+     *
+     * @param dynRouteId 路由id
+     */
+    @Override
+    @Transactional(rollbackFor = {Exception.class, GatewayException.class})
+    public void offline(Integer dynRouteId) {
+        DynRouteVo route = queryById(dynRouteId);
+        if (route == null) {
+            throw new GatewayAdminException(GatewayAdminExceptionCode.ROUTE_NOT_FIND);
+        }
+        DynRoute dynRoute = new DynRoute();
+        dynRoute.setStatus(RouteStatus.STATUS_OFFLINE);
+        dynRoute.setId(dynRouteId);
+        boolean ret = updateById(dynRoute);
+        if (ret) {
+            log.info("offline:{},{}", route.getGroupKey(), route.getRouteKey());
+            publisher.offline(route.getGroupKey(), route.getRouteKey());
+        }
+    }
+
+    /**
+     * 动态路由 同步
+     * <p>
+     * 1. 支持 全量 或者指定 路由 同步 到网关
+     * 2. 支持 全量 或者 指定 节点 同步
+     *
+     * @param syncParam 同步参数
+     */
+    @Override
+    @Transactional(rollbackFor = {Exception.class, GatewayException.class})
+    public void sync(DynRouteSyncParam syncParam) {
+        // 全量
+        List<DynRouteVo> routeVos;
+        if (syncParam.isAllRoute()) {
+            routeVos = listRoutes(new DynRouteQueryParam());
+        } else {
+            DynRouteQueryParam queryParam = new DynRouteQueryParam();
+            queryParam.setIds(syncParam.getRouteIds());
+            routeVos = listRoutes(queryParam);
+        }
+        if (org.springframework.util.CollectionUtils.isEmpty(routeVos)) {
+            throw new GatewayAdminException(GatewayAdminExceptionCode.ROUTE_NOT_FIND);
+        }
+        // 根据 筛选和status条件 下线路由信息
+        List<GatewayRouteDefinition> offlineDefinitions = routeVos.stream().filter(DynRouteVo::isOffline)
+            .map(this::covertToDefinition).collect(Collectors.toList());
+        if (!org.springframework.util.CollectionUtils.isEmpty(offlineDefinitions)) {
+            publisher.offlineBatch(offlineDefinitions);
+            log.info("GatewayRouteSync:offline>{},", offlineDefinitions.size());
+        }
+        // 根据 筛选和status条件 上线路由信息
+        List<GatewayRouteDefinition> onlineDefinitions = routeVos.stream().filter(DynRouteVo::isOnline)
+            .map(this::covertToDefinition).collect(Collectors.toList());
+        if (!org.springframework.util.CollectionUtils.isEmpty(onlineDefinitions)) {
+            publisher.publishBatch(onlineDefinitions);
+            log.info("GatewayRouteSync:online>{}", onlineDefinitions.size());
+        }
+    }
+
 
     /**
      * 所有的 路由列表
@@ -209,5 +315,38 @@ public class DynRouteServiceImpl extends ServiceImpl<DynRouteMapper, DynRoute> i
             throw new GatewayAdminException(GatewayAdminExceptionCode.DELETE_ERROR);
         }
         return true;
+    }
+
+
+    /**
+     * 获取 动态路由发布者
+     *
+     * @return
+     */
+    private GatewayRoutePublisher getPublisher() {
+        String beanName = gatewayAdminProperties.getPublishType() + "GatewayRoutePublisher";
+        return SpringContextUtil.getBean(beanName, GatewayRoutePublisher.class);
+    }
+
+    private GatewayRouteDefinition covertToDefinition(DynRouteVo routeVo) {
+        GatewayRouteDefinition definition = new GatewayRouteDefinition();
+        definition.setId(routeVo.getRouteKey());
+        definition.setUri(routeVo.getRouteUri());
+        definition.setMetadata(routeVo.getMetadata());
+        definition.setPredicates(routeVo.getPredicates().stream().map(item -> {
+            PredicateDefinition predicate = new PredicateDefinition();
+            predicate.setName(item.getPredicateKey());
+            predicate.setArgs(item.getArgsMap());
+            return predicate;
+        }).collect(Collectors.toList()));
+
+        definition.setFilters(routeVo.getFilters().stream().map(item -> {
+            FilterDefinition predicate = new FilterDefinition();
+            predicate.setName(item.getFilterKey());
+            predicate.setArgs(item.getArgsMap());
+            return predicate;
+        }).collect(Collectors.toList()));
+
+        return definition;
     }
 }

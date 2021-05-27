@@ -3,7 +3,6 @@ package com.uyibai.gateway.admin.api.service;
 import java.util.List;
 
 import com.uyibai.gateway.admin.api.model.route.DynRouteQueryParam;
-import com.uyibai.gateway.admin.api.model.route.DynRouteSyncParam;
 import com.uyibai.gateway.admin.api.model.route.DynRouteVo;
 
 
@@ -18,32 +17,6 @@ import com.uyibai.gateway.admin.api.model.route.DynRouteVo;
 public interface GatewayRouteRpcService {
 
     // 上线单个路由
-
-    /**
-     * 发布 上线 单个路由 信息
-     * <p>
-     * 如果失败 抛异常
-     *
-     * @param dynRouteId 路由id
-     */
-    void online(Integer dynRouteId);
-
-    /**
-     * 下线单个路由
-     *
-     * @param dynRouteId 路由id
-     */
-    void offline(Integer dynRouteId);
-
-    /**
-     * 动态路由 同步
-     * <p>
-     * 1. 支持 全量 或者指定 路由 同步 到网关
-     * 2. 支持 全量 或者 指定 节点 同步
-     *
-     * @param syncParam 同步参数
-     */
-    void sync(DynRouteSyncParam syncParam);
 
     /**
      * 查看 某个网关节点 的路由信息

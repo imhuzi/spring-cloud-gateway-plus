@@ -1,41 +1,30 @@
 package com.uyibai.gateway.admin.api;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import com.uyibai.gateway.admin.api.model.definition.FilterDefinition;
-import com.uyibai.gateway.admin.api.model.definition.GatewayRouteDefinition;
-import com.uyibai.gateway.admin.api.model.definition.PredicateDefinition;
 import com.uyibai.gateway.admin.api.model.route.DynRouteQueryParam;
 import com.uyibai.gateway.admin.api.model.route.DynRouteSyncParam;
 import com.uyibai.gateway.admin.api.model.route.DynRouteVo;
-import com.uyibai.gateway.admin.api.service.GatewayRouteRpcService;
-import com.uyibai.gateway.admin.config.GatewayAdminProperties;
-import com.uyibai.gateway.admin.constant.RouteStatus;
-import com.uyibai.gateway.admin.core.route.entity.DynRoute;
-import com.uyibai.gateway.admin.core.route.publisher.GatewayRoutePublisher;
 import com.uyibai.gateway.admin.core.route.service.DynRouteFilterService;
 import com.uyibai.gateway.admin.core.route.service.DynRoutePredicateService;
 import com.uyibai.gateway.admin.core.route.service.DynRouteService;
-import com.uyibai.gateway.admin.exception.GatewayAdminException;
-import com.uyibai.gateway.admin.exception.GatewayAdminExceptionCode;
-import com.uyibai.gateway.common.exception.GatewayException;
-import com.uyibai.gateway.common.spring.SpringContextUtil;
 
 import lombok.extern.slf4j.Slf4j;
 
 
 @Slf4j
-public class GatewayRouteApi implements GatewayRouteRpcService {
+@RestController
+public class GatewayRouteApi {
 
-  @Resource
-  GatewayAdminProperties gatewayAdminProperties;
+  private static final String PATH_PREFIX = "/routes";
+
 
   @Resource
   DynRouteService dynRouteService;
@@ -46,14 +35,6 @@ public class GatewayRouteApi implements GatewayRouteRpcService {
   @Resource
   DynRoutePredicateService dynRoutePredicateService;
 
-
-  private GatewayRoutePublisher publisher;
-
-  @PostConstruct
-  public void init() {
-    publisher = getPublisher();
-  }
-
   /**
    * 发布 上线 单个路由 信息
    * <p>
@@ -61,20 +42,10 @@ public class GatewayRouteApi implements GatewayRouteRpcService {
    *
    * @param dynRouteId 路由id
    */
-  @Override
-  @Transactional(rollbackFor = {Exception.class, GatewayException.class})
+  @PostMapping(path = PATH_PREFIX + "/online")
   public void online(Integer dynRouteId) {
-    // 修改 发布 状态
-    DynRoute dynRoute = new DynRoute();
-    dynRoute.setStatus(RouteStatus.STATUS_ONLINE);
-    dynRoute.setId(dynRouteId);
-    boolean ret = dynRouteService.updateById(dynRoute);
-    if (ret) {
-      // 根据 配置的 动态路由管理方式 进行 发布
-      DynRouteVo routeVo = dynRouteService.queryById(dynRouteId);
-      log.info("GatewayRouteOnline:{}", routeVo);
-      publisher.publishOne(covertToDefinition(routeVo));
-    }
+    // 根据 配置的 动态路由管理方式 进行 发布
+    dynRouteService.online(dynRouteId);
   }
 
   /**
@@ -82,21 +53,9 @@ public class GatewayRouteApi implements GatewayRouteRpcService {
    *
    * @param dynRouteId 路由id
    */
-  @Override
-  @Transactional(rollbackFor = {Exception.class, GatewayException.class})
+  @PostMapping(path = PATH_PREFIX + "/offline")
   public void offline(Integer dynRouteId) {
-    DynRouteVo route = dynRouteService.queryById(dynRouteId);
-    if (route == null) {
-      throw new GatewayAdminException(GatewayAdminExceptionCode.ROUTE_NOT_FIND);
-    }
-    DynRoute dynRoute = new DynRoute();
-    dynRoute.setStatus(RouteStatus.STATUS_OFFLINE);
-    dynRoute.setId(dynRouteId);
-    boolean ret = dynRouteService.updateById(dynRoute);
-    if (ret) {
-      log.info("offline:{},{}", route.getGroupKey(), route.getRouteKey());
-      publisher.offline(route.getGroupKey(), route.getRouteKey());
-    }
+    dynRouteService.offline(dynRouteId);
   }
 
   /**
@@ -107,35 +66,9 @@ public class GatewayRouteApi implements GatewayRouteRpcService {
    *
    * @param syncParam 同步参数
    */
-  @Override
-  @Transactional(rollbackFor = {Exception.class, GatewayException.class})
+  @PostMapping(path = PATH_PREFIX + "/sync")
   public void sync(DynRouteSyncParam syncParam) {
-    // 全量
-    List<DynRouteVo> routeVos;
-    if (syncParam.isAllRoute()) {
-      routeVos = dynRouteService.listRoutes(new DynRouteQueryParam());
-    } else {
-      DynRouteQueryParam queryParam = new DynRouteQueryParam();
-      queryParam.setIds(syncParam.getRouteIds());
-      routeVos = dynRouteService.listRoutes(queryParam);
-    }
-    if (CollectionUtils.isEmpty(routeVos)) {
-      throw new GatewayAdminException(GatewayAdminExceptionCode.ROUTE_NOT_FIND);
-    }
-    // 根据 筛选和status条件 下线路由信息
-    List<GatewayRouteDefinition> offlineDefinitions = routeVos.stream().filter(DynRouteVo::isOffline)
-        .map(this::covertToDefinition).collect(Collectors.toList());
-    if (!CollectionUtils.isEmpty(offlineDefinitions)) {
-      publisher.offlineBatch(offlineDefinitions);
-      log.info("GatewayRouteSync:offline>{},", offlineDefinitions.size());
-    }
-    // 根据 筛选和status条件 上线路由信息
-    List<GatewayRouteDefinition> onlineDefinitions = routeVos.stream().filter(DynRouteVo::isOnline)
-        .map(this::covertToDefinition).collect(Collectors.toList());
-    if (!CollectionUtils.isEmpty(onlineDefinitions)) {
-      publisher.publishBatch(onlineDefinitions);
-      log.info("GatewayRouteSync:online>{}", onlineDefinitions.size());
-    }
+      dynRouteService.sync(syncParam);
   }
 
   /**
@@ -144,42 +77,10 @@ public class GatewayRouteApi implements GatewayRouteRpcService {
    * @param nodeIp 节点 ip
    * @return 节点下的 路由信息
    */
-  @Override
+  @GetMapping(path = PATH_PREFIX + "/node")
   public List<DynRouteVo> find(String nodeIp) {
     // todo 未实现
     return null;
-  }
-
-  /**
-   * 获取 动态路由发布者
-   *
-   * @return
-   */
-  private GatewayRoutePublisher getPublisher() {
-    String beanName = gatewayAdminProperties.getPublishType() + "GatewayRoutePublisher";
-    return SpringContextUtil.getBean(beanName, GatewayRoutePublisher.class);
-  }
-
-  private GatewayRouteDefinition covertToDefinition(DynRouteVo routeVo) {
-    GatewayRouteDefinition definition = new GatewayRouteDefinition();
-    definition.setId(routeVo.getRouteKey());
-    definition.setUri(routeVo.getRouteUri());
-    definition.setMetadata(routeVo.getMetadata());
-    definition.setPredicates(routeVo.getPredicates().stream().map(item -> {
-      PredicateDefinition predicate = new PredicateDefinition();
-      predicate.setName(item.getPredicateKey());
-      predicate.setArgs(item.getArgsMap());
-      return predicate;
-    }).collect(Collectors.toList()));
-
-    definition.setFilters(routeVo.getFilters().stream().map(item -> {
-      FilterDefinition predicate = new FilterDefinition();
-      predicate.setName(item.getFilterKey());
-      predicate.setArgs(item.getArgsMap());
-      return predicate;
-    }).collect(Collectors.toList()));
-
-    return definition;
   }
 
   /**
@@ -192,7 +93,7 @@ public class GatewayRouteApi implements GatewayRouteRpcService {
    * @param queryParam 路由列表查询参数
    * @return 成功返回 路由列表
    */
-  @Override
+  @GetMapping(path = PATH_PREFIX)
   public List<DynRouteVo> list(DynRouteQueryParam queryParam) {
     return dynRouteService.listRoutes(queryParam);
   }
@@ -203,7 +104,7 @@ public class GatewayRouteApi implements GatewayRouteRpcService {
    * @param routeVo 路由信息
    * @return 保存成功返回 路由信息，否则抛异常
    */
-  @Override
+  @PostMapping(path = PATH_PREFIX)
   public DynRouteVo save(DynRouteVo routeVo) {
     return dynRouteService.save(routeVo);
   }
@@ -214,7 +115,7 @@ public class GatewayRouteApi implements GatewayRouteRpcService {
    * @param id 路由id
    * @return 删除成功 返回 true， 否则false
    */
-  @Override
+  @DeleteMapping(path = PATH_PREFIX)
   public void delete(Integer id) {
     dynRouteService.delete(id);
   }
@@ -225,7 +126,7 @@ public class GatewayRouteApi implements GatewayRouteRpcService {
    * @param routeId  路由id
    * @param filterId filter id
    */
-  @Override
+  @DeleteMapping(path = PATH_PREFIX + "/filter")
   public void deleteFilter(Integer routeId, Integer filterId) {
     dynRouteFilterService.delete(routeId, filterId);
   }
@@ -236,7 +137,7 @@ public class GatewayRouteApi implements GatewayRouteRpcService {
    * @param routeId     路由id
    * @param predicateId predicate id
    */
-  @Override
+  @DeleteMapping(path = PATH_PREFIX + "/predicate")
   public void deletePredicate(Integer routeId, Integer predicateId) {
     dynRoutePredicateService.delete(routeId, predicateId);
   }
